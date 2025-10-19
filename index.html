@@ -1,0 +1,496 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>国家猜测游戏 - DeepSeek API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .game-area {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .rules {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+            .rules h2 {
+                color: #2c3e50;
+                margin-bottom: 10px;
+            }
+
+            .rules ul {
+                padding-left: 20px;
+            }
+
+            .rules li {
+                margin-bottom: 8px;
+            }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #question-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+            #question-input:focus {
+                border-color: #3498db;
+                outline: none;
+            }
+
+        button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            }
+
+            button:active {
+                transform: translateY(0);
+            }
+
+        #guess-button {
+            background: linear-gradient(135deg, #27ae60, #219653);
+        }
+
+        .history-area {
+            margin-top: 20px;
+        }
+
+            .history-area h2 {
+                color: #2c3e50;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #eee;
+            }
+
+        #history-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .history-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+        }
+
+        .question {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .answer {
+            margin-top: 5px;
+            color: #27ae60;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #e8f4fc;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #27ae60;
+        }
+
+        .win-message {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+            .win-message h2 {
+                font-size: 1.8rem;
+                margin-bottom: 10px;
+            }
+
+        .attempts {
+            margin-top: 15px;
+            font-style: italic;
+            color: #2c3e50;
+        }
+
+        @media (max-width: 600px) {
+            .input-area {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>国家猜测游戏</h1>
+            <p class="subtitle">通过提问猜出我心中想的国家</p>
+        </header>
+
+        <div class="game-area">
+            <div class="rules">
+                <h2>游戏规则</h2>
+                <ul>
+                    <li>我想好了一个人口在800万到20亿之间的国家</li>
+                    <li>你可以通过提问来获取线索（如地理位置、人口、宗教等）</li>
+                    <li>我只能回答"是"或"否"</li>
+                    <li>当你确定答案时，可以直接输入国家名称进行猜测</li>
+                </ul>
+            </div>
+            <div class="difficulty-area" style="margin-bottom: 15px;">
+                <label for="difficulty-select">选择难度：</label>
+                <select id="difficulty-select">
+                    <option value="easy" selected>简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                </select>
+            </div>
+            <div class="input-area">
+                <input type="text" id="question-input" placeholder="输入你的问题或国家猜测...">
+                <button id="ask-button">提问</button>
+                <button id="guess-button">直接猜测</button>
+            </div>
+
+            <div class="attempts">
+                提问次数: <span id="attempt-count">0</span>
+            </div>
+
+            <div class="history-area">
+                <h2>提问历史</h2>
+                <div id="history-list">
+                    <div class="history-item">
+                        <div class="question">游戏开始！请提出你的第一个问题。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="api-status">
+                <div class="status-dot"></div>
+                <span>DeepSeek API 已连接</span>
+            </div>
+
+            <div class="win-message" id="win-message">
+                <h2>恭喜你猜对了！🎉</h2>
+                <p>你成功猜出了国家：<span id="correct-country"></span></p>
+                <p>总共提问次数：<span id="final-attempts"></span></p>
+                <button id="play-again">再玩一次</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        const gameState = {
+            targetCountry: "", // 这里应该通过API获取
+            attempts: 0,
+            gameActive: true
+        };
+
+        // DOM元素
+        const questionInput = document.getElementById('question-input');
+        const askButton = document.getElementById('ask-button');
+        const guessButton = document.getElementById('guess-button');
+        const historyList = document.getElementById('history-list');
+        const attemptCount = document.getElementById('attempt-count');
+        const winMessage = document.getElementById('win-message');
+        const correctCountry = document.getElementById('correct-country');
+        const finalAttempts = document.getElementById('final-attempts');
+        const playAgainButton = document.getElementById('play-again');
+        const difficultySelect = document.getElementById('difficulty-select');
+        // ...其他元素
+
+        // 初始化游戏
+        async function initGame() {
+            const difficulty = difficultySelect.value;
+            const response = await fetch('/api/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ difficulty })
+            });
+            const data = await response.json();
+            gameState.targetCountry = data.country;
+            gameState.min = data.min;
+            gameState.max = data.max;
+            gameState.attempts = 0;
+            gameState.gameActive = true;
+
+            updateAttemptsDisplay();
+            clearHistory();
+            winMessage.style.display = 'none';
+
+            addHistoryItem(`游戏开始！我已经想好了一个国家（人口${gameState.min}到${gameState.max}），请开始提问。`);
+        }
+
+        // 更新尝试次数显示
+        function updateAttemptsDisplay() {
+            attemptCount.textContent = gameState.attempts;
+        }
+
+        // 清空历史记录
+        function clearHistory() {
+            historyList.innerHTML = '<div class="history-item"><div class="question">游戏开始！请提出你的第一个问题。</div></div>';
+        }
+
+        // 添加历史记录项
+        function addHistoryItem(question, answer) {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+
+            let content = `<div class="question">${question}</div>`;
+            if (answer) {
+                content += `<div class="answer">${answer}</div>`;
+            }
+
+            historyItem.innerHTML = content;
+            historyList.appendChild(historyItem);
+
+            // 滚动到底部
+            historyList.scrollTop = historyList.scrollHeight;
+        }
+
+        // 处理提问
+        // 处理提问
+        async function handleQuestion() {
+            if (!gameState.gameActive) return;
+
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            gameState.attempts++;
+            updateAttemptsDisplay();
+
+            // 调用后端 API 获取答案
+            let answer = '';
+            try {
+                const response = await fetch('/api/answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        country: gameState.targetCountry,
+                        min: gameState.min,
+                        max: gameState.max
+                    })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    answer = data.answer;
+                } else {
+                    answer = 'API请求失败';
+                }
+            } catch (e) {
+                answer = 'API调用异常';
+            }
+
+        addHistoryItem(question, answer);
+        questionInput.value = '';
+
+            // 检查是否已经猜出国家
+            if (question.toLowerCase().includes(gameState.targetCountry.toLowerCase())) {
+                endGame(true);
+            }
+        }
+
+        // 处理直接猜测
+        function handleGuess() {
+            if (!gameState.gameActive) return;
+
+            const guess = questionInput.value.trim();
+            if (!guess) return;
+
+            gameState.attempts++;
+            updateAttemptsDisplay();
+
+            if (guess.toLowerCase() === gameState.targetCountry.toLowerCase()) {
+                addHistoryItem(`我猜是：${guess}`, "正确！恭喜你猜对了！🎉");
+                endGame(true);
+            } else {
+                addHistoryItem(`我猜是：${guess}`, "不对，请继续提问获取更多线索。");
+                questionInput.value = '';
+            }
+        }
+
+        // 结束游戏
+        function endGame(success) {
+            gameState.gameActive = false;
+
+            if (success) {
+                correctCountry.textContent = gameState.targetCountry;
+                finalAttempts.textContent = gameState.attempts;
+                winMessage.style.display = 'block';
+            }
+        }
+
+        // 模拟API回答（在实际应用中应替换为真实的API调用）
+        /*function getMockAnswer(question) {
+            const lowerQuestion = question.toLowerCase();
+
+            // 关于地理位置的问题
+            if (lowerQuestion.includes('欧洲') || lowerQuestion.includes('欧州')) {
+                return gameState.targetCountry === '葡萄牙' ? '是' : '否';
+            }
+
+            if (lowerQuestion.includes('南美') || lowerQuestion.includes('拉丁美洲')) {
+                return '否';
+            }
+
+            if (lowerQuestion.includes('非洲')) {
+                return '否';
+            }
+
+            if (lowerQuestion.includes('亚洲')) {
+                return '否';
+            }
+
+            // 关于语言的问题
+            if (lowerQuestion.includes('英语') || lowerQuestion.includes('说英语')) {
+                return '否';
+            }
+
+            if (lowerQuestion.includes('葡萄牙语') || lowerQuestion.includes('说葡萄牙语')) {
+                return gameState.targetCountry === '葡萄牙' ? '是' : '否';
+            }
+
+            if (lowerQuestion.includes('西班牙语') || lowerQuestion.includes('说西班牙语')) {
+                return '否';
+            }
+
+            // 关于宗教的问题
+            if (lowerQuestion.includes('天主教') || lowerQuestion.includes('天主教会')) {
+                return gameState.targetCountry === '葡萄牙' ? '是' : '否';
+            }
+
+            if (lowerQuestion.includes('伊斯兰教') || lowerQuestion.includes('穆斯林')) {
+                return '否';
+            }
+
+            if (lowerQuestion.includes('佛教')) {
+                return '否';
+            }
+
+            // 关于人口的问题
+            if (lowerQuestion.includes('1000万') || lowerQuestion.includes('一千万')) {
+                return gameState.targetCountry === '葡萄牙' ? '是' : '否';
+            }
+
+            if (lowerQuestion.includes('1500万') || lowerQuestion.includes('一千五百万')) {
+                return '否';
+            }
+
+            // 关于其他特征的问题
+            if (lowerQuestion.includes('岛国') || lowerQuestion.includes('岛屿')) {
+                return '否';
+            }
+
+            if (lowerQuestion.includes('内陆') || lowerQuestion.includes('没有海岸')) {
+                return '否';
+            }
+
+            if (lowerQuestion.includes('欧盟') || lowerQuestion.includes('欧洲联盟')) {
+                return gameState.targetCountry === '葡萄牙' ? '是' : '否';
+            }
+
+            // 默认回答
+            const answers = ['是', '否'];
+            return answers[Math.floor(Math.random() * answers.length)];
+        }*/
+
+        // 事件监听
+        askButton.addEventListener('click', handleQuestion);
+        guessButton.addEventListener('click', handleGuess);
+        playAgainButton.addEventListener('click', initGame); 
+        difficultySelect.addEventListener('change', initGame); // 新增：监听难度切换
+
+        questionInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleQuestion();
+            }
+        });
+
+        // 初始化游戏
+        initGame();
+    </script>
+</body>
+</html>
